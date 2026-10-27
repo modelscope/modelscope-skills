@@ -27,14 +27,17 @@ The body of `POST /mcp/servers/{id}/deploy`:
 
 | Field | Required | Description |
 |------|------|------|
-| `transport_type` | **Yes** | Valid values `sse` / `streamable_http`. **Omitting it returns HTTP 400 `invalid transport_type`** |
-| `expiration_minutes` | No | Validity period (minutes) |
-| `auth_check` | No | Whether to verify authentication |
-| `env_info` | No | Environment variables in `{KEY: value}` form (some services require an API Key) |
+| `transport_type` | **Yes** | Valid values `sse` / `streamable_http` (plus high-spec variants `SSE` / `STREAMABLE_HTTP`, normalized server-side to the base types). **Omitting it returns HTTP 400 `invalid transport_type`** |
+| `environment_variables` | No | Environment variables in `{"KEY": "value"}` form (some services require an API Key); legacy alias `env_info` still accepted |
+| `reset` | No | Rebuild/redeploy from scratch |
+| `deploy_test` | No | Test deployment |
+| `expiration_minutes` | No | Validity period in minutes; `-1` means permanent |
+| `auth_check` | No | Whether connecting via the remote URL requires a ModelScope access token |
 
 - **The deployed transport determines the single returned URL**: `sse` → `.../sse`; `streamable_http` → `.../mcp`. The operational list returns only the transport you deployed, not both.
 - `ms mcp deploy {id}` can omit it because the CLI defaults to `transport_type=sse`; for streamable use `--transport-type streamable_http`.
-- **Pagination limit**: `page_number × page_size ≤ 100`, enforced server-side (exceeding it returns HTTP 403 `QuotaLimitExceed`), different from the 3000 for Hub/Skills.
+- **Search request** (`PUT /mcp/servers`): `search`, `filter.category`, `filter.is_hosted` (hosted or not), `page_number` (default 1), `page_size` (default 20), `direction` (sort direction). **Pagination limit**: `page_number × page_size ≤ 100`, enforced server-side (exceeding it returns HTTP 403 `QuotaLimitExceed`), different from the 3000 for Hub/Studios.
+- Server detail (`GET /mcp/servers/{id}`) supports `?get_operational_url=true`, which fills `operational_urls: [{url, id, transport_type, expiration, auth_required}]` in the response.
 
 ```bash
 # OpenAPI deploy (transport_type required)

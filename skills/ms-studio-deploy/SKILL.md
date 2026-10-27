@@ -11,7 +11,7 @@ description: >-
 
 # ModelScope Studio Deployment
 
-> Verified live against ModelScope OpenAPI ｜ modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
+> Cross-checked against ModelScope OpenAPI (modelscope_service master 2026-10-27 + `feat/openAPI_studios_ouath` branch for Studio OAuth app configuration); previously live-verified with modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
 
 Deploy a local project to a ModelScope Studio. **This Skill uses OpenAPI as the source of truth**, with the `ms` CLI as an equivalent convenience alias, `modelscope_hub.HubApi` as the API-first Python client, and MCP tools as optional.
 
@@ -25,6 +25,9 @@ User wants to...
 │
 ├── Update an already-deployed Studio
 │   └── Modify code → git push → POST /studios/{o}/{r}/deploy (or ms deploy)
+│
+├── List / browse Studios
+│   └── GET /studios?search=...&status=running|all&owner=...&mcp_support=&hardware_type=xGPU
 │
 ├── View Studio status/logs
 │   └── GET /studios/{o}/{r}/logs/run (or ms logs --log-type run)
@@ -83,6 +86,7 @@ Studio code is synced via Git; ensure Git is installed and user information is c
 | Operation | OpenAPI (source of truth) | ms CLI (equivalent alias) | `modelscope_hub.HubApi` (Python) | MCP tool (optional) |
 |------|---------------------|---------------------|-----------------------------------|------------------|
 | User info | `GET /users/me` | `ms whoami` | `api.whoami()` | `getCurrentUser` |
+| List Studios | `GET /studios` (query: `search`, `status`, `owner`, `author`, `mcp_support`, `hardware_type`, `sort`, `page_number`, `page_size`) | none | none | none |
 | Create Studio | `POST /studios` | `ms create o/r --repo-type studio` | `api.create_repo("o/r", repo_type="studio", ...)` | `createStudio` |
 | Get details | `GET /studios/{o}/{r}` | `ms info o/r --repo-type studio` | `api.get_repo("o/r", repo_type="studio")` | `getStudio` |
 | Deploy/restart | `POST /studios/{o}/{r}/deploy` | `ms deploy o/r --repo-type studio` | `api.deploy_repo("o/r")` | `deployStudio` |
@@ -188,6 +192,8 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios" \
 # Equivalent CLI: ms create ${owner}/${repo} --repo-type studio --sdk-type gradio --private
 ```
 
+Create request fields: `owner`/`repo_name` (required), `sdk_type` (defaults to `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license` (defaults to `apache-2.0`), `hardware`, `base_image`, `sdk_version`. `private` (boolean) is deprecated — use `visibility`. `hardware` may be omitted: the server then normalizes to the current default free instance tier (free tiers use `platform/…`/`xgpu/…` prefixes; paid uses `paid/<InstanceType>`). OAuth app fields (`oauth_enabled`, `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls`, `oauth_homepage_url`) may also be set at creation — see the endpoint reference for the tri-state group semantics.
+
 **Already exists → update settings as needed:**
 
 ```bash
@@ -198,6 +204,8 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/settings
 ```
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require redeployment to take effect. xGPU requires an application (https://modelscope.cn/docs/studios/xGPU).
+
+Settings also accepts the OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` — applied only when `oauth_enabled` is present (`true` = enable/reconfigure, `false` = disable). Valid scopes: `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. Equivalent CLI: `ms settings o/r --repo-type studio --oauth-enabled --oauth-scope "openid profile" --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb`. See `references/openapi-studio-endpoints.md` for the full contract.
 
 ### Step 4: Handle sensitive information
 
@@ -247,17 +255,17 @@ git push -u modelscope master
 
 ### Step 6: Configure plaintext variables/secrets
 
-Configure based on the list from Step 4 (API-first). Plaintext variables return both key and value and are only for non-sensitive configuration:
+Configure based on the list from Step 4 (API-first). Plaintext variables return both key and value (plus an optional `description`) and are only for non-sensitive configuration:
 
 ```bash
 # List plaintext variables
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
-# Add
+# Add (description is optional, max 512 chars)
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio"}'
-# Update
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
+# Update (description: omit to keep, pass "" to clear)
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
   -d '{"key": "GRADIO_TEMP_DIR", "value": "/mnt/workspace/tmp"}'
@@ -267,17 +275,17 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variabl
   -d '{"key": "GRADIO_TEMP_DIR"}'
 ```
 
-Secrets do not return the value and are used for sensitive information such as API keys, tokens, and passwords:
+Secrets do not return the value (the list returns key + optional `description`) and are used for sensitive information such as API keys, tokens, and passwords:
 
 ```bash
-# List secrets (returns key only)
+# List secrets (returns key and description only)
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
-# Add
+# Add (description is optional, max 512 chars)
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "API_KEY", "value": "sk-xxx"}'
-# Update
+  -d '{"key": "API_KEY", "value": "sk-xxx", "description": "Upstream API key"}'
+# Update (description: omit to keep, pass "" to clear)
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
   -d '{"key": "API_KEY", "value": "new-value"}'
@@ -288,7 +296,7 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets
 # Equivalent CLI (secrets only): ms secret {list,add,update,delete} ${owner}/${repo}
 ```
 
-> ⚠️ To delete a plaintext variable or a secret, use `DELETE .../variables` or `DELETE .../secrets` and pass `{"key":"..."}` in the **body**, not the `DELETE .../{key}` path form.
+> ⚠️ To delete a plaintext variable or a secret, use `DELETE .../variables` or `DELETE .../secrets` and pass `{"key":"..."}` in the **body**, not the `DELETE .../{key}` path form. Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
 
 ### Step 7: Deploy the Studio
 
@@ -298,15 +306,21 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/deploy" \
 # Equivalent CLI: ms deploy ${owner}/${repo} --repo-type studio
 ```
 
+No request body. The response `data` is the runtime snapshot: `status`, `active_config` (the config actually running: `hardware`, `base_image`, `sdk_type`, `sdk_version`), `created_at`, `error_message` (failure states only). Stop (`POST .../stop`) returns the same shape.
+
 ### Step 8: Monitor status and logs
 
 ```bash
-# Run logs
-curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/run" -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# Run logs (supports pagination/filter query params)
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/run?page_num=1&page_size=100&keyword=Error" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 # Build logs (Docker type)
-curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/build" -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/build" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 # Equivalent CLI: ms logs ${owner}/${repo} --log-type run|build
 ```
+
+Log query params: `page_num` (default 1), `page_size` (default 100, capped at 500), `keyword` (substring filter), `start_timestamp`/`end_timestamp` (Unix seconds; default window is the last 30 days). The response contains `logs[]`, `page_num`, `page_size`, `total_count`, `total_page_num`. `log_type` only accepts `run` or `build`.
 
 View logs by SDK type:
 

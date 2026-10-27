@@ -8,7 +8,7 @@ description: >-
 
 # ModelScope Unified Operations Entrypoint
 
-> Verified with modelscope 1.37.1, Python 3.12 (2026-06-23)
+> Verified with modelscope 1.37.1, Python 3.12 (2026-06-23); OpenAPI endpoint specs cross-checked against the modelscope_service master branch (2026-10-23)
 
 Operate the full range of ModelScope platform capabilities through OpenAPI, CLI, and SDK, covering Hub (models/datasets), Studio, MCP services, and the Skills Center (Skills). This Skill serves as a quick-reference entrypoint; complex operational workflows require the dedicated Skill.
 
@@ -96,6 +96,7 @@ User wants to...
 │   └── Version management → SDK: api.get_model_branches_and_tags()
 │
 ├─── Studio ──────────────────────────────
+│   ├── List Studios → GET /studios (search/status/owner/mcp_support/hardware_type/sort)
 │   ├── Create Studio → POST /studios or CLI: ms create owner/repo --repo-type studio
 │   ├── Deploy/restart → CLI: ms deploy owner/repo --repo-type studio
 │   ├── View status → GET /studios/{owner}/{repo}
@@ -515,6 +516,15 @@ commits = api.list_repo_commits(
 > The CLI is driven by modelscope_hub and is a 1:1 thin wrapper around OpenAPI; the API-first Python entrypoint is `from modelscope_hub import HubApi`.
 > If the agent already has the studio-mcp tools configured, you can also use the MCP tools (`createStudio`, `deployStudio`, etc.).
 
+### List Studios
+
+```bash
+# OpenAPI (status: running|all; hardware_type: xGPU; mcp_support: true|false)
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios?search=my-app&status=running&page_number=1&page_size=20" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# Response data: {studios: [...], total_count, page_number, page_size}; page_number × page_size ≤ 3000
+```
+
 ### Create Studio
 
 ```bash
@@ -527,6 +537,8 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios" \
   -H "Content-Type: application/json" \
   -d '{"owner": "USERNAME", "repo_name": "my-app", "sdk_type": "gradio", "visibility": "private"}'
 ```
+
+Create fields: `owner`/`repo_name` required; optional `sdk_type` (defaults `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license`, `hardware` (may be omitted — server normalizes to the default free tier), `base_image`, `sdk_version`. `private` (boolean) is deprecated. The OAuth app group (`oauth_enabled` + `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url`) can also be set at creation with the same semantics as in Update Settings.
 
 | sdk_type | Use case |
 |----------|----------|
@@ -575,6 +587,8 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/logs/run" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 ```
 
+Logs support query params: `page_num` (default 1), `page_size` (default 100, max 500), `keyword`, `start_timestamp`/`end_timestamp` (Unix seconds, default last 30 days). `log_type` only accepts `run`/`build`.
+
 ### Stop
 
 ```bash
@@ -601,9 +615,24 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/settings"
 
 Updatable fields: `display_name`, `description`, `visibility`, `sdk_type`, `sdk_version`, `base_image`, `hardware`, `license`. `private` is deprecated; OpenAPI prefers `visibility`.
 
+The Studio OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` is also updatable: the server applies the group only when `oauth_enabled` is present in the payload (`true` = enable/reconfigure, `false` = disable). Valid scopes: `openid` (ModelScope user identity), `profile` (public user profile), `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; `oauth_token_expire_time` enum: `1`=15min, `2`=1hour, `3`=8hours, `4`=1day, `5`=1week, `6`=30days.
+
+```bash
+# CLI
+ms settings USERNAME/my-app --repo-type studio \
+  --oauth-enabled --oauth-scope "openid profile" \
+  --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb
+
+# OpenAPI
+curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/settings" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"oauth_enabled": true, "oauth_scope": "openid profile", "oauth_token_expire_time": 4, "oauth_callback_urls": ["https://example.org/cb"]}'
+```
+
 ### Variable Management
 
-Plaintext variables return both key and value, and are used only for non-sensitive configuration:
+Plaintext variables return key, value, and an optional `description` (≤ 512 chars), and are used only for non-sensitive configuration. On update, `description` keeps its original value when omitted and is cleared when set to `""`:
 
 ```bash
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
@@ -611,7 +640,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio"}'
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
@@ -622,7 +651,7 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variable
   -d '{"key": "GRADIO_TEMP_DIR"}'
 ```
 
-Secrets return only the key, not the value, and are used for sensitive information such as API keys, tokens, and passwords:
+Secrets return key and description (not the value) and are used for sensitive information such as API keys, tokens, and passwords:
 
 ```bash
 # CLI
@@ -637,7 +666,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/secrets" \
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"key": "API_KEY", "value": "sk-xxx"}'
+  -d '{"key": "API_KEY", "value": "sk-xxx", "description": "Upstream API key"}'
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
@@ -688,7 +717,9 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/mcp/servers/@amap/amap-maps" \
 
 ### Deploy and Undeploy
 
-When deploying, **`transport_type` is required**, with valid values `sse` / `streamable_http`; the deployed transport determines the unique URL returned (`sse`→`.../sse`, `streamable_http`→`.../mcp`).
+When deploying, **`transport_type` is required**; valid values `sse` / `streamable_http` (and high-spec variants `SSE` / `STREAMABLE_HTTP`, which the server normalizes to the base types); the deployed transport determines the unique URL returned (`sse`→`.../sse`, `streamable_http`→`.../mcp`).
+
+Optional deploy body fields: `environment_variables` (map `{KEY: value}`, needed by services requiring an API Key; legacy alias `env_info`), `expiration_minutes` (`-1` = permanent), `auth_check` (bool), `reset` (bool, redeploy from scratch).
 
 ```bash
 # CLI (defaults to sse; the other option uses --transport-type streamable_http)
@@ -739,8 +770,10 @@ operational = mcp.list_operational_mcp_servers()
 ### Search Skills
 
 ```bash
-curl "$MODELSCOPE_ENDPOINT/openapi/v1/skills?search=code-review&page_size=20" \
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/skills?search=code-review&filter.category=developer-tools&page_size=20" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# Filters: filter.category / filter.developer / filter.license / filter.custom_tag / filter.owner
+# Pagination: page_size 1–100; total result quota 2400 skills
 ```
 
 ### View Skill Details
@@ -784,10 +817,10 @@ MCPApi().download_skill(skill_id="@author/skill-name", local_dir="./my-skills")
 ### Publish Skill (Quick Reference)
 
 ```bash
-# Step 1: Upload the zip package (the zip root must contain exactly 1 SKILL.md)
+# Step 1: Upload the zip package (the zip root must contain exactly 1 SKILL.md; max 5MB, one file per request)
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/files/upload" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
-  -F "file=@my-skill.zip" -F "type=skill"
+  -F "file=@my-skill.zip"
 # → Response {"data": {"id": "<uuid>"}}; use data.id as the skill_file for the next step (note the key is id, not file_id)
 
 # Step 2: Create the skill (skill_file takes the data.id from the previous step)
@@ -796,6 +829,8 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/skills" \
   -H "Content-Type: application/json" \
   -d '{"owner": "username", "skill_name": "my-skill", "display_name": "My Skill", "skill_file": "<data.id>", "category": "developer-tools"}'
 ```
+
+Required fields: `owner`, `skill_name` (lowercase letters/digits/hyphens, ≤ 64 chars), `category` (must be an allowed enum — see `references/skills-center.md`), `skill_file`. Optional: `display_name` (≤ 128), `description` (≤ 2000), `license` (defaults `Apache-2.0`), `tags`, `source_url` (valid URL), `logo_url` (valid URL), `private` (bool, default public), `auto_sync_enabled` (bool — GitHub auto-sync, effective only when `source_url` is a GitHub repo).
 
 ### Update Skill Settings
 
@@ -806,7 +841,25 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/skills/{owner}/{skill_name}/setti
   -d '{"display_name": "New name", "description": "Updated description", "skill_file": "<new_file_id>"}'
 ```
 
-Updatable fields: `display_name`, `description`, `skill_file`, `tags`, `source_url`, `category`, `license`. Not modifiable: `owner`, `skill_name`.
+Updatable fields: `display_name`, `description`, `skill_file`, `tags`, `source_url`, `category`, `license`, `private` (bool), `logo_url`, `auto_sync_enabled`. Not modifiable: `owner`, `skill_name`. Skill visibility changes are synced to the GitLab mirror repo.
+
+### GitHub Source Sync
+
+For skills published with a GitHub `source_url`:
+
+```bash
+# Check whether the upstream GitHub repo has updates
+curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/skills/{owner}/{skill_name}/check-update" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# → {"data": {"status": "..."}} indicating whether an update is available
+
+# Manually trigger a sync from GitHub
+curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/skills/{owner}/{skill_name}/sync" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# → {"data": {"success": true|false, "message": "..."}}
+```
+
+With `auto_sync_enabled: true`, the platform syncs from GitHub automatically; `sync_status` in the skill detail reflects the last sync result.
 
 ## Cache Management
 
@@ -829,10 +882,11 @@ ms clear-cache                             # Clear cache
 | Studio | Docker requires real-name verification | Alibaba Cloud account binding |
 | Studio | Port fixed at 7860 | 8080 cannot be used |
 | Studio | No programmatic deletion | OpenAPI `DELETE /studios/{id}` returns 404; SDK/CLI `delete_repo` is deprecated and does not support studio. Deletion requires the web console; programmatically you can only `stop` |
-| MCP | Deployment `transport_type` required | Valid `sse`/`streamable_http`, otherwise HTTP 400 |
+| MCP | Deployment `transport_type` required | Valid `sse`/`streamable_http` (or high-spec `SSE`/`STREAMABLE_HTTP`), otherwise HTTP 400 |
 | MCP | Pagination limit ≤ 100 | `page × size > 100` returns HTTP 403 |
 | MCP | SDK has no deploy/undeploy | Use the CLI `ms mcp deploy/undeploy` or OpenAPI |
 | Skills | CLI supports only `add` | No `list`/`update`/`remove` subcommands yet |
+| Skills | Pagination limits | `page_size` 1–100; total result quota 2400 skills (HTTP quota error beyond) |
 
 ## Helper Scripts
 
