@@ -1,6 +1,6 @@
 # MCP Service Discovery and Configuration Reference
 
-> Expanded reference for ms-hub §8 (MCP service operations): end-to-end discovery→deploy→configure-IDE orchestration, IDE config templates, SDK↔OpenAPI field differences.
+> Expanded reference for ms-hub MCP service operations (§8 quick reference moved in below): end-to-end discovery→deploy→configure-IDE orchestration, IDE config templates, SDK↔OpenAPI field differences.
 >
 > MCP marketplace: https://www.modelscope.cn/mcp | Verified live 2026-06-29
 
@@ -119,3 +119,81 @@ print("MCP URL:", mcp_url)
 **VS Code (Copilot)** / **Codex** / generic Agent: following each client's docs, add a remote MCP service of type Streamable HTTP (or SSE), using the same URL obtained above. If the client only supports SSE, deploy with `transport_type=sse` instead and use the `.../sse` URL.
 
 When unsure how to configure a client, print the URL and let the user add it manually.
+
+## MCP Service Operations — Quick Reference (moved from SKILL.md §8)
+
+## 8. MCP Service Operations
+
+> Full orchestration, IDE configuration templates, SDK↔OpenAPI field differences → see `references/mcp-services.md`
+>
+> Pagination limit `page_number × page_size ≤ 100` (server-enforced; exceeding it returns HTTP 403).
+
+### Search MCP Services
+
+```bash
+# CLI
+ms mcp list --search "map" --page-size 20
+
+# OpenAPI
+curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/mcp/servers" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"search": "map", "page_size": 20}'
+```
+
+### View Service Details
+
+```bash
+# CLI
+ms mcp info @amap/amap-maps
+
+# OpenAPI
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/mcp/servers/@amap/amap-maps" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+```
+
+### Deploy and Undeploy
+
+When deploying, **`transport_type` is required**, with valid values `sse` / `streamable_http`; the deployed transport determines the unique URL returned (`sse`→`.../sse`, `streamable_http`→`.../mcp`).
+
+```bash
+# CLI (defaults to sse; the other option uses --transport-type streamable_http)
+ms mcp deploy @amap/amap-maps
+ms mcp undeploy @amap/amap-maps
+
+# OpenAPI (must include transport_type, otherwise HTTP 400 invalid transport_type)
+curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/mcp/servers/@amap/amap-maps/deploy" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"transport_type": "streamable_http"}'
+curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/mcp/servers/@amap/amap-maps/undeploy" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+```
+
+### View My Deployed Services
+
+```bash
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/mcp/servers/operational" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+```
+
+### SDK Method
+
+```python
+from modelscope.hub.mcp_api import MCPApi
+
+mcp = MCPApi()
+mcp.login(access_token="YOUR_TOKEN")
+
+# Search → {"total_count": N, "servers": [{"name", "id", "description"}, ...]}
+result = mcp.list_mcp_servers(search="weather", total_count=20)
+for s in result["servers"]:
+    print(f"{s['id']}: {s['description']}")
+
+# Details → {"name", "description", "id", "servers": [{"type", "url"}, ...]}
+detail = mcp.get_mcp_server(server_id="@amap/amap-maps")
+
+# Deployed → {"total_count": N, "servers": [{"name", "id", "mcp_servers": [{"type", "url"}]}, ...]}
+operational = mcp.list_operational_mcp_servers()
+```
+
+> `modelscope.hub.mcp_api.MCPApi` supports only search, details, and the deployed list. Use the CLI `ms mcp deploy/undeploy` or OpenAPI for deploy/undeploy.
