@@ -16,7 +16,7 @@ This repository follows the [Agent Skills](https://agentskills.io/home) standard
 | `ms-hub` | Unified operations hub — model/dataset search/download/upload, repo management, Studio quick-ops, MCP services, Skills Center | [SKILL.md](skills/ms-hub/SKILL.md) |
 | `ms-studio-deploy` | Deploy local projects to Studios (Gradio / Streamlit / Docker / static), API-first workflow with auto-diagnosis | [SKILL.md](skills/ms-studio-deploy/SKILL.md) |
 
-> MCP service management and Skills Center publishing are now folded into `ms-hub`: common ops live in SKILL.md §8/§9, with depth in `ms-hub/references/mcp-services.md` and `skills-center.md`.
+> MCP service management and Skills Center publishing are folded into `ms-hub`: SKILL.md keeps the Quick Decision Guide, with the operations quick reference and expanded depth in `ms-hub/references/mcp-services.md` and `skills-center.md`.
 
 ## Installation
 
