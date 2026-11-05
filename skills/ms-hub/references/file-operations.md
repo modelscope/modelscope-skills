@@ -1,9 +1,19 @@
 # File Operations Reference
 
-> ms-hub §4 file operations.
-> Moved verbatim from the former SKILL.md inline sections; read on demand via the skill file list.
+> ms-hub file operations (list/read/download/upload/delete, atomic multi-file commit).
+> Read on demand via the skill file list in SKILL.md.
 
-## 4. File Operations
+## SDK Prerequisite
+
+The Python examples below use the shared SDK client (authentication: `api.login(access_token=os.environ['MODELSCOPE_API_KEY'])` — see "Authentication" in SKILL.md):
+
+```python
+from modelscope.hub.api import HubApi
+
+api = HubApi()
+```
+
+## File Operations
 
 ### List Files
 

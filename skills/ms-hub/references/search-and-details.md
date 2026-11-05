@@ -1,9 +1,9 @@
 # Resource Search, Details & Dataset Inspection Reference
 
-> ms-hub §1 resource search, §2 view details, §5 dataset inspection.
-> Moved verbatim from the former SKILL.md inline sections; read on demand via the skill file list.
+> ms-hub resource search, view details, and dataset inspection.
+> Read on demand via the skill file list in SKILL.md.
 
-## 1. Resource Search
+## Resource Search
 
 ### OpenAPI Method
 
@@ -70,7 +70,7 @@ for d in result["datasets"]:
 
 > **SDK vs OpenAPI field name differences**: SDK `list_models` returns PascalCase (`Path`, `Downloads`), while OpenAPI `/models` returns snake_case (`id`, `downloads`). `list_datasets` is snake_case on both sides.
 
-## 2. View Details
+## View Details
 
 ### OpenAPI Method
 
@@ -105,7 +105,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/users/me" \
 ```
 
 
-## 5. Dataset Inspection
+## Dataset Inspection
 
 ModelScope currently supports dataset exploration through a combination of the API/SDK/CLI described above:
 
@@ -118,7 +118,7 @@ ModelScope currently supports dataset exploration through a combination of the A
 
 Use the helper script `scripts/ms_inspect_dataset.py` to quickly understand a dataset's file structure, field schema, and sample content. Internally the script calls the SDK (`HubApi.dataset_info` + `MsDataset.load`) to perform the operations.
 
-> The examples below use `uv run` (zero-config); in an environment with modelscope already installed you can also run `python scripts/ms_inspect_dataset.py ...` directly — see "Helper Scripts" at the end of the document.
+> The examples below use `uv run` (zero-config); in an environment with modelscope already installed you can also run `python scripts/ms_inspect_dataset.py ...` directly — see "Helper Scripts" in SKILL.md.
 
 ```bash
 # Full inspection (file structure + schema + sample preview)

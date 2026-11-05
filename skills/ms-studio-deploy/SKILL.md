@@ -21,7 +21,7 @@ Deploy a local project to a ModelScope Studio. **This Skill uses OpenAPI as the 
 User wants to...
 │
 ├── Deploy a local project to a Studio
-│   └── Follow the 10 steps in "Full Deployment Workflow" below
+│   └── Follow the 10 steps in "Full Deployment Workflow" (references/deployment-workflow.md)
 │
 ├── Update an already-deployed Studio
 │   └── Modify code → git push → POST /studios/{o}/{r}/deploy (or ms deploy)
@@ -57,7 +57,7 @@ If neither is available, guide the user:
 1. Visit $MODELSCOPE_ENDPOINT/my/myaccesstoken to obtain a token
 2. `export MODELSCOPE_API_KEY=your_token`
 
-> **Site routing:** this skill targets whichever site `$MODELSCOPE_ENDPOINT` points to (default domestic `https://modelscope.cn`; international `https://www.modelscope.ai`). Export `MODELSCOPE_ENDPOINT` plus a **site-scoped** token before deploying — the OpenAPI base and the git remote host below both derive from it. Full guidance: ms-hub → "Site selection & endpoint routing".
+> **Site routing:** this skill targets whichever site `$MODELSCOPE_ENDPOINT` points to (default domestic `https://modelscope.cn`; international `https://www.modelscope.ai`). Export `MODELSCOPE_ENDPOINT` plus a **site-scoped** token before deploying — the OpenAPI base and the git remote host above both derive from it. Full guidance: ms-hub → "Site selection & endpoint routing".
 
 ### 2. Runtime Environment
 

@@ -1,6 +1,6 @@
 # Skills Center: Search / Publish / Install Reference
 
-> Expanded reference for ms-hub Skills Center operations (§9 quick reference moved in below): category taxonomy, publishing packaging rules, installation methods, directory structure.
+> Expanded reference for ms-hub Skills Center operations: category taxonomy, publishing packaging rules, installation methods, directory structure, plus the operations quick reference at the end.
 >
 > Skills marketplace: https://www.modelscope.cn/skills
 
@@ -148,11 +148,9 @@ description: >-
 ---
 ```
 
-## Skills Center Operations — Quick Reference (moved from SKILL.md §9)
+## Skills Center Operations — Quick Reference
 
-## 9. Skills Center Operations
-
-> Category system, packaging spec, complete publish/update/install → see `references/skills-center.md`
+> Category system, packaging spec, complete publish/update/install → the sections above in this file.
 
 ### Search Skills
 
@@ -171,7 +169,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/skills/@ModelScope/modelscope-oauth-skill"
 
 ### Install Skill
 
-> ⚠️ `skills add` is a command of the **legacy `modelscope` CLI**; `ms` (modelscope_hub) **does not have** `skills`. If the `modelscope`/`ms` entrypoint is overridden by modelscope_hub and reports "no skills command", switch to the `curl install.sh` or SDK `download_skill` below (both are the most reliable).
+> ⚠️ `skills add` belongs to the **legacy `modelscope` CLI**; `ms` (modelscope_hub) has no `skills` subcommand — see "Installing a Skill" above for the fallbacks.
 
 ```bash
 # Option 1: modelscope (legacy) CLI

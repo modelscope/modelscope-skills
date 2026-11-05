@@ -131,18 +131,20 @@ User wants to...
     └── Delete tags/branches (no API)
 ```
 
+> ⚠️ **Paid Studio resources**: setting `hardware` to `paid/<InstanceType>` (or any returned item with `resource_type=paid`) charges the Alibaba Cloud account bound to the user's ModelScope account. Obtain the user's **explicit authorization** before creating, updating settings, or redeploying; without it, only free resources may be selected. Details: `references/studio-operations.md`.
+
 ## Reference Docs (read on demand)
 
 Detailed sections live in `references/` — read them only when the task needs them:
 
 | Topic | File | Covers |
 |---|---|---|
-| Search & details | references/search-and-details.md | §1 resource search, §2 view details, §5 dataset inspection |
-| Repository management | references/repo-management.md | §3 create/delete repos & visibility, §6 branches/tags/commits |
-| File operations | references/file-operations.md | §4 list/read/download/upload/delete, atomic multi-file commit |
-| Studio operations | references/studio-operations.md | §7 studio create/configure/deploy/logs/variables/code sync |
-| MCP services | references/mcp-services.md | §8 search/details/deploy/undeploy quick reference + full orchestration guide |
-| Skills Center | references/skills-center.md | §9 search/install/publish/update quick reference + full packaging spec |
+| Search & details | references/search-and-details.md | Resource search, view details, dataset inspection |
+| Repository management | references/repo-management.md | Create/delete repos & visibility, branches/tags/commits |
+| File operations | references/file-operations.md | List/read/download/upload/delete, atomic multi-file commit |
+| Studio operations | references/studio-operations.md | Studio create/configure/deploy/logs/variables/code sync |
+| MCP services | references/mcp-services.md | Search/details/deploy/undeploy quick reference + full orchestration guide |
+| Skills Center | references/skills-center.md | Search/install/publish/update quick reference + full packaging spec |
 
 Full Studio deployment workflow → use the dedicated ms-studio-deploy skill.
 
@@ -165,6 +167,7 @@ ms clear-cache                             # Clear cache
 | Hub | Tags cannot be deleted | Can only be created |
 | Hub | Repository/file deletion via web console only | `delete_repo`/`delete_files` return 401 under token; cannot delete programmatically |
 | Studio | Docker requires real-name verification | Alibaba Cloud account binding |
+| Studio | Paid resources need explicit user authorization | `paid/<InstanceType>` hardware charges the bound Alibaba Cloud account; see references/studio-operations.md |
 | Studio | Port fixed at 7860 | 8080 cannot be used |
 | Studio | No programmatic deletion | OpenAPI `DELETE /studios/{id}` returns 404; SDK/CLI `delete_repo` is deprecated and does not support studio. Deletion requires the web console; programmatically you can only `stop` |
 | MCP | Deployment `transport_type` required | Valid `sse`/`streamable_http`, otherwise HTTP 400 |

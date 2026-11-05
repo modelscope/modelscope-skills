@@ -1,6 +1,6 @@
 # MCP Service Discovery and Configuration Reference
 
-> Expanded reference for ms-hub MCP service operations (§8 quick reference moved in below): end-to-end discovery→deploy→configure-IDE orchestration, IDE config templates, SDK↔OpenAPI field differences.
+> Expanded reference for ms-hub MCP service operations: end-to-end discovery→deploy→configure-IDE orchestration, IDE config templates, SDK↔OpenAPI field differences, plus the operations quick reference at the end.
 >
 > MCP marketplace: https://www.modelscope.cn/mcp | Verified live 2026-06-29
 
@@ -120,13 +120,10 @@ print("MCP URL:", mcp_url)
 
 When unsure how to configure a client, print the URL and let the user add it manually.
 
-## MCP Service Operations — Quick Reference (moved from SKILL.md §8)
+## MCP Service Operations — Quick Reference
 
-## 8. MCP Service Operations
-
-> Full orchestration, IDE configuration templates, SDK↔OpenAPI field differences → see `references/mcp-services.md`
->
 > Pagination limit `page_number × page_size ≤ 100` (server-enforced; exceeding it returns HTTP 403).
+> Full orchestration, IDE configuration templates, SDK↔OpenAPI field differences → the sections above in this file.
 
 ### Search MCP Services
 

@@ -1,9 +1,9 @@
 # Studio Operations Reference
 
-> ms-hub §7 studio operations.
-> Moved verbatim from the former SKILL.md inline sections; read on demand via the skill file list.
+> ms-hub studio operations (create/configure/deploy/logs/variables/code sync).
+> Read on demand via the skill file list in SKILL.md.
 
-## 7. Studio Operations
+## Studio Operations
 
 > For the complete deployment workflow (including code sync, diagnosis and repair) → ms-studio-deploy (**OpenAPI is the source of truth**, CLI is an equivalent alias)
 >

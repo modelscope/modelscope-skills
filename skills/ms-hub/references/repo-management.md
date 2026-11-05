@@ -1,9 +1,19 @@
 # Repository Management & Version Control Reference
 
-> ms-hub §3 repository management, §6 version control.
-> Moved verbatim from the former SKILL.md inline sections; read on demand via the skill file list.
+> ms-hub repository management and version control (create/delete repos & visibility, branches/tags/commits).
+> Read on demand via the skill file list in SKILL.md.
 
-## 3. Repository Management
+## SDK Prerequisite
+
+The Python examples below use the shared SDK client (authentication: `api.login(access_token=os.environ['MODELSCOPE_API_KEY'])` — see "Authentication" in SKILL.md):
+
+```python
+from modelscope.hub.api import HubApi
+
+api = HubApi()
+```
+
+## Repository Management
 
 ### Create Repository
 
@@ -55,7 +65,7 @@ api.set_repo_visibility(repo_id="owner/repo", repo_type="model", visibility="pri
 > ⚠️ **Repository deletion has been restricted by the platform to the web console only**: `api.delete_repo(...)` returns 401 under token authentication ("Deletion is restricted to web console") and cannot be deleted programmatically. Please perform this operation on the web at https://modelscope.cn.
 
 
-## 6. Version Control
+## Version Control
 
 ### List Branches and Tags
 
