@@ -16,7 +16,7 @@ ModelScope Skills 为 AI Agent 提供 ModelScope 魔搭社区的操作能力—�
 | `ms-hub` | 统一操作入口——模型/数据集搜索下载上传、仓库管理、创空间速查、MCP 服务、技能中心 | [SKILL.md](skills/ms-hub/SKILL.md) |
 | `ms-studio-deploy` | 将本地项目部署到创空间（Gradio / Streamlit / Docker / 静态站），API 优先的完整部署流程和自动诊断 | [SKILL.md](skills/ms-studio-deploy/SKILL.md) |
 
-> MCP 服务管理与技能中心发布已并入 `ms-hub`：常用操作见 SKILL.md 第八/九节，展开细节见 `ms-hub/references/mcp-services.md` 与 `skills-center.md`。
+> MCP 服务管理与技能中心发布已并入 `ms-hub`：SKILL.md 保留快速决策指南，操作速查与展开细节见 `ms-hub/references/mcp-services.md` 与 `skills-center.md`。
 
 ## 安装
 
