@@ -94,7 +94,7 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/settings
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require redeployment to take effect. xGPU requires an application (https://modelscope.cn/docs/studios/xGPU).
 
-Settings also accepts the OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` — applied only when `oauth_enabled` is present (`true` = enable/reconfigure, `false` = disable). Valid scopes: `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. Equivalent CLI: `ms settings ${owner}/${repo} --repo-type studio --oauth-enabled --oauth-scope "openid profile" --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb`. See `openapi-studio-endpoints.md` for the full contract.
+Settings also accepts the OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` — applied only when `oauth_enabled` is present (`true` = enable/reconfigure, `false` = disable; sending the sub-fields without `oauth_enabled` returns HTTP 400). OAuth is not available for `static` studios. Valid scopes: `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. Equivalent CLI: `ms settings ${owner}/${repo} --repo-type studio --oauth-enabled --oauth-scope "openid profile" --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb`. See `openapi-studio-endpoints.md` for the full contract (including the runtime variables injected once OAuth is enabled).
 
 ### Step 4: Handle sensitive information
 

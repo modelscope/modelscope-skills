@@ -11,7 +11,7 @@ description: >-
 
 # ModelScope Studio Deployment
 
-> Cross-checked against ModelScope OpenAPI (modelscope_service master 2026-10-27; Studio OAuth app configuration requires a server-side version that supports Studio OAuth); previously live-verified with modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
+> Cross-checked against ModelScope OpenAPI (modelscope_service master 2026-11-09; Studio OAuth app configuration is part of master — server versions predating it ignore the `oauth_*` fields); previously live-verified with modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
 
 Deploy a local project to a ModelScope Studio. **This Skill uses OpenAPI as the source of truth**, with the `ms` CLI as an equivalent convenience alias, `modelscope_hub.HubApi` as the API-first Python client, and MCP tools as optional.
 

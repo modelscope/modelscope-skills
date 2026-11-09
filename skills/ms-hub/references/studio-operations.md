@@ -32,7 +32,7 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios" \
   -d '{"owner": "USERNAME", "repo_name": "my-app", "sdk_type": "gradio", "visibility": "private"}'
 ```
 
-Create fields: `owner`/`repo_name` required; optional `sdk_type` (defaults `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license`, `hardware` (may be omitted — server normalizes to the default free tier), `base_image`, `sdk_version`. `private` (boolean) is deprecated. The OAuth app group (`oauth_enabled` + `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url`) can also be set at creation with the same semantics as in Update Settings.
+Create fields: `owner`/`repo_name` required; optional `sdk_type` (defaults `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license`, `hardware` (may be omitted — server normalizes to the default free tier), `base_image`, `sdk_version`. `private` (boolean) is deprecated. The OAuth app group (`oauth_enabled` + `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url`) can also be set at creation with the same semantics as in Update Settings — except for `static` studios, where OAuth is rejected with HTTP 400 (no server-side runtime to consume OAuth credentials).
 
 | sdk_type | Use case |
 |----------|----------|
@@ -109,7 +109,7 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/settings"
 
 Updatable fields: `display_name`, `description`, `visibility`, `sdk_type`, `sdk_version`, `base_image`, `hardware`, `license`. `private` is deprecated; OpenAPI prefers `visibility`.
 
-The Studio OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` is also updatable: the server applies the group only when `oauth_enabled` is present in the payload (`true` = enable/reconfigure, `false` = disable). Valid scopes: `openid` (ModelScope user identity), `profile` (public user profile), `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; `oauth_token_expire_time` enum: `1`=15min, `2`=1hour, `3`=8hours, `4`=1day, `5`=1week, `6`=30days.
+The Studio OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` is also updatable: the server applies the group only when `oauth_enabled` is present in the payload (`true` = enable/reconfigure, `false` = disable). Sending `oauth_*` sub-fields without `oauth_enabled` returns HTTP 400, and OAuth cannot be enabled on `static` studios. Valid scopes: `openid` (ModelScope user identity; required when enabled), `profile` (public user profile), `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; `oauth_token_expire_time` enum: `1`=15min, `2`=1hour, `3`=8hours, `4`=1day, `5`=1week, `6`=30days.
 
 ```bash
 # CLI

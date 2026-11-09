@@ -4,7 +4,7 @@ Base URL: `$MODELSCOPE_ENDPOINT/openapi/v1`
 
 Authentication: `Authorization: Bearer $MODELSCOPE_API_KEY`
 
-> Field-level spec cross-checked against the modelscope_service master branch (2026-10-27). Studio OAuth app configuration requires a server-side version that supports Studio OAuth; `oauth_*` fields are ignored by server versions that predate Studio OAuth support.
+> Field-level spec cross-checked against the modelscope_service master branch (2026-11-09; the Studio OAuth app configuration surface is part of master). Server versions that predate Studio OAuth support ignore the `oauth_*` fields.
 
 ## List Studios
 
@@ -62,10 +62,10 @@ Request fields:
 | `hardware` | No | Free: `platform/…`/`xgpu/…` prefixes; paid: `paid/<InstanceType>`. May be omitted — the server normalizes to the current default free instance tier |
 | `base_image` | No | Defaults to the latest |
 | `sdk_version` | No | Defaults to the latest for `gradio`; validated against the available versions |
-| `oauth_enabled` | No | Enable the Studio's OAuth app configuration (defaults to `false`); requires `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls` when `true` |
-| `oauth_scope` | No | Space-separated OAuth scopes; valid values: `openid` (ModelScope user identity), `profile` (public user profile), `manage-mcp-deployment` (manage MCP deployments), `list-operational-mcp` (list deployed MCP servers), `read-repos` (read personal repositories), `api-inference` (call API Inference) |
+| `oauth_enabled` | No | Enable the Studio's OAuth app configuration (defaults to `false`); requires `oauth_scope`, `oauth_token_expire_time` when `true`. Not supported for `static` studios — HTTP 400 (no server-side runtime to consume OAuth credentials) |
+| `oauth_scope` | No | Space-separated OAuth scopes; valid values: `openid` (ModelScope user identity), `profile` (public user profile), `manage-mcp-deployment` (manage MCP deployments), `list-operational-mcp` (list deployed MCP servers), `read-repos` (read personal repositories), `api-inference` (call API Inference). Required and must include `openid` when OAuth is enabled |
 | `oauth_token_expire_time` | No | Token lifetime enum: `1`=15min, `2`=1hour, `3`=8hours, `4`=1day, `5`=1week, `6`=30days |
-| `oauth_callback_urls` | No | Array of OAuth callback URLs; each entry needs a scheme and a host |
+| `oauth_callback_urls` | No | Array of OAuth callback URLs; each entry needs a scheme and a host; defaults to the studio subdomain when omitted |
 | `oauth_homepage_url` | No | OAuth app homepage URL |
 
 ### sdk_type values
@@ -170,7 +170,7 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/setti
 
 Send only the fields you want to change; omitted fields keep their original values. Updatable: `display_name` (≤ 128), `description` (≤ 2000), `cover_image`, `license`, `visibility` (`public`/`protected`/`private`), `private` (deprecated), `sdk_type`, `sdk_version`, `base_image`, `hardware`, `oauth_enabled`, `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls`, `oauth_homepage_url`.
 
-The `oauth_*` group is tri-state: the server applies it **only when `oauth_enabled` is present in the payload** — pass `true` to enable/reconfigure, `false` to disable (the other `oauth_*` fields are then dropped together). Omit `oauth_enabled` entirely and the other `oauth_*` fields are ignored, so always send the flag alongside them.
+The `oauth_*` group is tri-state: the server applies it **only when `oauth_enabled` is present in the payload** — pass `true` to enable/reconfigure, `false` to disable (the other `oauth_*` fields are then dropped together). Sending any `oauth_*` sub-field without `oauth_enabled` is rejected with HTTP 400 (`oauth_enabled is required when updating OAuth settings`), so always send the flag alongside them. Enabling OAuth on a `static` studio is likewise rejected with HTTP 400.
 
 ```bash
 # Enable / reconfigure the OAuth app
@@ -192,9 +192,24 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/setti
   -d '{"oauth_enabled": false}'
 ```
 
-Valid `oauth_scope` values (space-separated, multiple allowed): `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. `oauth_token_expire_time` uses the enum `1`=15min … `6`=30days. `oauth_callback_urls` entries need a scheme and a host.
+Valid `oauth_scope` values (space-separated, multiple allowed): `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; when OAuth is enabled the scope list must include `openid`. `oauth_token_expire_time` uses the enum `1`=15min … `6`=30days and is required when enabling. `oauth_callback_urls` entries need a scheme and a host; when omitted the studio subdomain is used.
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require a redeploy to take effect.
+
+### OAuth runtime variables (auto-injected)
+
+Once the OAuth app is enabled, the runtime injects these variables into the studio process. They are not listed in the variables/secrets tables, and the client secret never persists there (runtime-only):
+
+| Variable | Value |
+|---|---|
+| `MS_OAUTH_CLIENT_ID` | OAuth app client ID |
+| `MS_OAUTH_CLIENT_SECRET` | OAuth app client secret (runtime-only) |
+| `MS_OAUTH_SCOPES` | Granted scopes (space-separated) |
+| `MS_OPENID_PROVIDER_URL` | ModelScope OpenID provider endpoint |
+| `MS_SPACE_ID` | `owner/repo_name` |
+| `MS_SPACE_HOST` | Studio host |
+
+Gradio studios additionally receive Hugging Face Spaces-compatible aliases: `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_SCOPES`, `OPENID_PROVIDER_URL`, `SYSTEM` (`spaces`), `SPACE_ID`, `SPACE_HOST`.
 
 ## Plaintext variables (Variables)
 
