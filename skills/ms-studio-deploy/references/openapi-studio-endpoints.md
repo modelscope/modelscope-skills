@@ -4,7 +4,7 @@ Base URL: `$MODELSCOPE_ENDPOINT/openapi/v1`
 
 Authentication: `Authorization: Bearer $MODELSCOPE_API_KEY`
 
-> Field-level spec cross-checked against the modelscope_service master branch (2026-10-27) and the `feat/openAPI_studios_ouath` branch (Studio OAuth app configuration; `oauth_*` fields are ignored by master deployments that predate the feature).
+> Field-level spec cross-checked against the modelscope_service master branch (2026-10-27). Studio OAuth app configuration requires a server-side version that supports Studio OAuth; `oauth_*` fields are ignored by server versions that predate Studio OAuth support.
 
 ## List Studios
 
