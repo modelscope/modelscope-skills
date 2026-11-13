@@ -113,7 +113,7 @@ The Studio OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire
 
 ```bash
 # CLI
-ms settings USERNAME/my-app --repo-type studio \
+ms studio settings USERNAME/my-app \
   --oauth-enabled --oauth-scope "openid profile" \
   --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb
 

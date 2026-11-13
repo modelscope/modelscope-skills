@@ -170,7 +170,9 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/setti
 
 Send only the fields you want to change; omitted fields keep their original values. Updatable: `display_name` (≤ 128), `description` (≤ 2000), `cover_image`, `license`, `visibility` (`public`/`protected`/`private`), `private` (deprecated), `sdk_type`, `sdk_version`, `base_image`, `hardware`, `oauth_enabled`, `oauth_scope`, `oauth_token_expire_time`, `oauth_callback_urls`, `oauth_homepage_url`.
 
-The `oauth_*` group is tri-state: the server applies it **only when `oauth_enabled` is present in the payload** — pass `true` to enable/reconfigure, `false` to disable (the other `oauth_*` fields are then dropped together). Sending any `oauth_*` sub-field without `oauth_enabled` is rejected with HTTP 400 (`oauth_enabled is required when updating OAuth settings`), so always send the flag alongside them. Enabling OAuth on a `static` studio is likewise rejected with HTTP 400.
+The `oauth_*` group is tri-state: the server applies it **only when `oauth_enabled` is present in the payload** — pass `true` to enable/reconfigure, `false` to disable (the other `oauth_*` fields are then dropped together). Sending any `oauth_*` sub-field without `oauth_enabled` is rejected with HTTP 400 (`oauth_enabled is required when updating OAuth settings`), so always send the flag alongside them.
+
+`static` studios behave differently on create and update: explicitly enabling OAuth when **creating** a `static` studio returns HTTP 400 (no server-side runtime can consume the credentials), while a `PATCH` whose effective SDK type is `static` is silently force-closed by the service layer — such a request can still return 200. After any OAuth update, **check `oauth_enabled` in the response** to confirm the configuration actually took effect.
 
 ```bash
 # Enable / reconfigure the OAuth app
@@ -192,24 +194,27 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/setti
   -d '{"oauth_enabled": false}'
 ```
 
-Valid `oauth_scope` values (space-separated, multiple allowed): `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; when OAuth is enabled the scope list must include `openid`. `oauth_token_expire_time` uses the enum `1`=15min … `6`=30days and is required when enabling. `oauth_callback_urls` entries need a scheme and a host; when omitted the studio subdomain is used.
+Valid `oauth_scope` values (space-separated, multiple allowed): `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; when OAuth is enabled the scope list must include `openid`. `oauth_token_expire_time` uses the enum `1`=15min … `6`=30days and is required when enabling. `oauth_callback_urls` entries need a scheme and a host. When the field is omitted, **creating** a new OAuth app defaults its callbacks to the studio subdomain, while **updating** a bound app keeps its existing callbacks — send the full list explicitly whenever you want them rewritten.
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require a redeploy to take effect.
 
 ### OAuth runtime variables (auto-injected)
 
-Once the OAuth app is enabled, the runtime injects these variables into the studio process. They are not listed in the variables/secrets tables, and the client secret never persists there (runtime-only):
+Once the OAuth app is enabled, the runtime injects these variables into the studio process (Gradio, Docker and Streamlit share the same injection path; `static` studios get none — there is no server-side runtime to consume them). They are not listed in the variables/secrets tables, and the client secret never persists there (runtime-only):
 
 | Variable | Value |
 |---|---|
-| `MS_OAUTH_CLIENT_ID` | OAuth app client ID |
-| `MS_OAUTH_CLIENT_SECRET` | OAuth app client secret (runtime-only) |
-| `MS_OAUTH_SCOPES` | Granted scopes (space-separated) |
-| `MS_OPENID_PROVIDER_URL` | ModelScope OpenID provider endpoint |
-| `MS_SPACE_ID` | `owner/repo_name` |
-| `MS_SPACE_HOST` | Studio host |
+| `OAUTH_CLIENT_ID` | OAuth app client ID |
+| `OAUTH_CLIENT_SECRET` | OAuth app client secret (runtime-only) |
+| `OAUTH_SCOPES` | Granted scopes (space-separated) |
+| `OPENID_PROVIDER_URL` | ModelScope OpenID provider endpoint |
+| `SYSTEM` | Always `spaces` |
+| `STUDIO_ID` | `owner/repo_name` |
+| `SPACE_ID` | Same value as `STUDIO_ID` |
+| `STUDIO_HOST` | Studio host — injected only when the standalone domain resolves to a host |
+| `SPACE_HOST` | Same condition and value as `STUDIO_HOST` |
 
-Gradio studios additionally receive Hugging Face Spaces-compatible aliases: `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_SCOPES`, `OPENID_PROVIDER_URL`, `SYSTEM` (`spaces`), `SPACE_ID`, `SPACE_HOST`.
+There is no `MS_*`-prefixed form of these variables — read the exact names above, or the app will fail to pick up its OAuth credentials.
 
 ## Plaintext variables (Variables)
 
