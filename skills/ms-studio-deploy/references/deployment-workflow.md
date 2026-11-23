@@ -94,7 +94,7 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/settings
 
 Changes to `sdk_type`, `sdk_version`, `base_image`, and `hardware` require redeployment to take effect. xGPU requires an application (https://modelscope.cn/docs/studios/xGPU).
 
-Settings also accepts the OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` — applied only when `oauth_enabled` is present (`true` = enable/reconfigure, `false` = disable; sending the sub-fields without `oauth_enabled` returns HTTP 400). Valid scopes: `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. Equivalent CLI: `ms studio settings ${owner}/${repo} --oauth-enabled --oauth-scope "openid profile" --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb`. See `openapi-studio-endpoints.md` for the full contract (including the runtime variables injected once OAuth is enabled).
+Settings also accepts the OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` — applied only when `oauth_enabled` is present (`true` = enable/reconfigure, `false` = disable — the other sub-fields are then ignored, not validated; sending the sub-fields without `oauth_enabled` returns HTTP 400). Valid scopes: `openid`, `profile`, `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`. Equivalent CLI: `ms studio settings ${owner}/${repo} --oauth-enabled --oauth-scope "openid profile" --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb`. See `openapi-studio-endpoints.md` for the full contract (including the runtime variables injected once OAuth is enabled).
 
 ### Step 4: Handle sensitive information
 
@@ -144,17 +144,17 @@ git push -u modelscope master
 
 ### Step 6: Configure plaintext variables/secrets
 
-Configure based on the list from Step 4 (API-first). Plaintext variables return both key and value and are only for non-sensitive configuration:
+Configure based on the list from Step 4 (API-first). Plaintext variables return both key and value (plus an optional `description`) and are only for non-sensitive configuration:
 
 ```bash
 # List plaintext variables
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
-# Add
+# Add (description is optional, max 512 chars)
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio"}'
-# Update
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
+# Update (description: omit to keep, pass "" to clear)
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
   -d '{"key": "GRADIO_TEMP_DIR", "value": "/mnt/workspace/tmp"}'
@@ -164,17 +164,17 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variabl
   -d '{"key": "GRADIO_TEMP_DIR"}'
 ```
 
-Secrets do not return the value and are used for sensitive information such as API keys, tokens, and passwords:
+Secrets do not return the value (the list returns key + optional `description`) and are used for sensitive information such as API keys, tokens, and passwords:
 
 ```bash
-# List secrets (returns key only)
+# List secrets (returns key and description only)
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
-# Add
+# Add (description is optional, max 512 chars)
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "API_KEY", "value": "sk-xxx"}'
-# Update
+  -d '{"key": "API_KEY", "value": "sk-xxx", "description": "Upstream API key"}'
+# Update (description: omit to keep, pass "" to clear)
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
   -d '{"key": "API_KEY", "value": "new-value"}'
@@ -185,7 +185,7 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets
 # Equivalent CLI (secrets only): ms secret {list,add,update,delete} ${owner}/${repo}
 ```
 
-> ⚠️ To delete a plaintext variable or a secret, use `DELETE .../variables` or `DELETE .../secrets` and pass `{"key":"..."}` in the **body**, not the `DELETE .../{key}` path form.
+> ⚠️ To delete a plaintext variable or a secret, use `DELETE .../variables` or `DELETE .../secrets` and pass `{"key":"..."}` in the **body**, not the `DELETE .../{key}` path form. Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
 
 ### Step 7: Deploy the Studio
 
@@ -198,8 +198,9 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/deploy" \
 ### Step 8: Monitor status and logs
 
 ```bash
-# Run logs
-curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/run" -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# Run logs (supports pagination/filter query params)
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/run?page_num=1&page_size=100&keyword=Error" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 # Build logs (Docker type)
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/logs/build" -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 # Equivalent CLI: ms logs ${owner}/${repo} --log-type run|build

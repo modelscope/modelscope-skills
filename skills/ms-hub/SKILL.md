@@ -8,7 +8,7 @@ description: >-
 
 # ModelScope Unified Operations Entrypoint
 
-> Verified with modelscope 1.37.1, Python 3.12 (2026-06-23); OpenAPI endpoint specs cross-checked against the modelscope_service master branch (2026-10-23)
+> Verified with modelscope 1.37.1, Python 3.12 (2026-06-23); OpenAPI endpoint specs cross-checked against the modelscope_service master branch (Hub/MCP/Skills references 2026-10-23; Studio endpoints 2026-11-13)
 
 Operate the full range of ModelScope platform capabilities through OpenAPI, CLI, and SDK, covering Hub (models/datasets), Studio, MCP services, and the Skills Center (Skills). This Skill serves as a quick-reference entrypoint; complex operational workflows require the dedicated Skill.
 
