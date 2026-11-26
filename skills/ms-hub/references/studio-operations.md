@@ -10,6 +10,15 @@
 > The CLI is driven by modelscope_hub and is a 1:1 thin wrapper around OpenAPI; the API-first Python entrypoint is `from modelscope_hub import HubApi`.
 > If the agent already has the studio-mcp tools configured, you can also use the MCP tools (`createStudio`, `deployStudio`, etc.).
 
+### List Studios
+
+```bash
+# OpenAPI (status: running|all; hardware_type: xGPU; mcp_support: true|false)
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios?search=my-app&status=running&page_number=1&page_size=20" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# Response data: {studios: [...], total_count, page_number, page_size}; page_number × page_size ≤ 3000
+```
+
 ### Create Studio
 
 ```bash
@@ -22,6 +31,8 @@ curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios" \
   -H "Content-Type: application/json" \
   -d '{"owner": "USERNAME", "repo_name": "my-app", "sdk_type": "gradio", "visibility": "private"}'
 ```
+
+Create fields: `owner`/`repo_name` required; optional `sdk_type` (defaults `gradio`), `visibility` (`public`/`protected`/`private`), `display_name`, `description`, `cover_image`, `license`, `hardware` (may be omitted — server normalizes to the default free tier), `base_image`, `sdk_version`. `private` (boolean) is deprecated. The OAuth app group (`oauth_enabled` + `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url`) can also be set at creation with the same semantics as in Update Settings — except for `static` studios, where OAuth is rejected with HTTP 400 (no server-side runtime to consume OAuth credentials).
 
 | sdk_type | Use case |
 |----------|----------|
@@ -70,6 +81,8 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/logs/run" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY"
 ```
 
+Logs support query params: `page_num` (default 1), `page_size` (default 100, max 500), `keyword`, `start_timestamp`/`end_timestamp` (Unix seconds, default last 30 days). `log_type` only accepts `run`/`build`.
+
 ### Stop
 
 ```bash
@@ -96,9 +109,24 @@ curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/settings"
 
 Updatable fields: `display_name`, `description`, `visibility`, `sdk_type`, `sdk_version`, `base_image`, `hardware`, `license`. `private` is deprecated; OpenAPI prefers `visibility`.
 
+The Studio OAuth app group `oauth_enabled` / `oauth_scope` / `oauth_token_expire_time` / `oauth_callback_urls` / `oauth_homepage_url` is also updatable: the server applies the group only when `oauth_enabled` is present in the payload (`true` = enable/reconfigure, `false` = disable). When `oauth_enabled` is `false`, the other `oauth_*` sub-fields are ignored (not validated, not applied). Sending `oauth_*` sub-fields without `oauth_enabled` returns HTTP 400, and OAuth cannot be enabled on `static` studios. Valid scopes: `openid` (ModelScope user identity; required when enabled), `profile` (public user profile), `manage-mcp-deployment`, `list-operational-mcp`, `read-repos`, `api-inference`; `oauth_token_expire_time` enum: `1`=15min, `2`=1hour, `3`=8hours, `4`=1day, `5`=1week, `6`=30days.
+
+```bash
+# CLI
+ms studio settings USERNAME/my-app \
+  --oauth-enabled --oauth-scope "openid profile" \
+  --oauth-token-expire-time 4 --oauth-callback-url https://example.org/cb
+
+# OpenAPI
+curl -X PATCH "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/settings" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"oauth_enabled": true, "oauth_scope": "openid profile", "oauth_token_expire_time": 4, "oauth_callback_urls": ["https://example.org/cb"]}'
+```
+
 ### Variable Management
 
-Plaintext variables return both key and value, and are used only for non-sensitive configuration:
+Plaintext variables return key, value, and an optional `description` (≤ 512 chars), and are used only for non-sensitive configuration. On update, `description` keeps its original value when omitted and is cleared when set to `""`:
 
 ```bash
 curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
@@ -106,7 +134,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio"}'
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variables" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
@@ -117,7 +145,7 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/variable
   -d '{"key": "GRADIO_TEMP_DIR"}'
 ```
 
-Secrets return only the key, not the value, and are used for sensitive information such as API keys, tokens, and passwords:
+Secrets return key and description (not the value) and are used for sensitive information such as API keys, tokens, and passwords:
 
 ```bash
 # CLI
@@ -132,7 +160,7 @@ curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/secrets" \
 curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"key": "API_KEY", "value": "sk-xxx"}'
+  -d '{"key": "API_KEY", "value": "sk-xxx", "description": "Upstream API key"}'
 curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/USERNAME/my-app/secrets" \
   -H "Authorization: Bearer $MODELSCOPE_API_KEY" \
   -H "Content-Type: application/json" \

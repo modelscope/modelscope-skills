@@ -11,7 +11,7 @@ description: >-
 
 # ModelScope Studio Deployment
 
-> Verified live against ModelScope OpenAPI ｜ modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
+> Cross-checked against ModelScope OpenAPI (modelscope_service master 2026-11-13; Studio OAuth app configuration is part of master — server versions predating it ignore the `oauth_*` fields); previously live-verified with modelscope 1.37.1 / modelscope_hub 0.1.2 (2026-06-29)
 
 Deploy a local project to a ModelScope Studio. **This Skill uses OpenAPI as the source of truth**, with the `ms` CLI as an equivalent convenience alias, `modelscope_hub.HubApi` as the API-first Python client, and MCP tools as optional.
 
@@ -25,6 +25,9 @@ User wants to...
 │
 ├── Update an already-deployed Studio
 │   └── Modify code → git push → POST /studios/{o}/{r}/deploy (or ms deploy)
+│
+├── List / browse Studios
+│   └── GET /studios?search=...&status=running|all&owner=...&mcp_support=&hardware_type=xGPU
 │
 ├── View Studio status/logs
 │   └── GET /studios/{o}/{r}/logs/run (or ms logs --log-type run)
@@ -83,6 +86,7 @@ Studio code is synced via Git; ensure Git is installed and user information is c
 | Operation | OpenAPI (source of truth) | ms CLI (equivalent alias) | `modelscope_hub.HubApi` (Python) | MCP tool (optional) |
 |------|---------------------|---------------------|-----------------------------------|------------------|
 | User info | `GET /users/me` | `ms whoami` | `api.whoami()` | `getCurrentUser` |
+| List Studios | `GET /studios` (query: `search`, `status`, `owner`, `author`, `mcp_support`, `hardware_type`, `sort`, `page_number`, `page_size`) | none | none | none |
 | Create Studio | `POST /studios` | `ms create o/r --repo-type studio` | `api.create_repo("o/r", repo_type="studio", ...)` | `createStudio` |
 | Get details | `GET /studios/{o}/{r}` | `ms info o/r --repo-type studio` | `api.get_repo("o/r", repo_type="studio")` | `getStudio` |
 | Deploy/restart | `POST /studios/{o}/{r}/deploy` | `ms deploy o/r --repo-type studio` | `api.deploy_repo("o/r")` | `deployStudio` |

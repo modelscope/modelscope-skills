@@ -8,7 +8,7 @@ description: >-
 
 # ModelScope Unified Operations Entrypoint
 
-> Verified with modelscope 1.37.1, Python 3.12 (2026-06-23)
+> Verified with modelscope 1.37.1, Python 3.12 (2026-06-23); OpenAPI endpoint specs cross-checked against the modelscope_service master branch (Hub/MCP/Skills references 2026-10-23; Studio endpoints 2026-11-13)
 
 Operate the full range of ModelScope platform capabilities through OpenAPI, CLI, and SDK, covering Hub (models/datasets), Studio, MCP services, and the Skills Center (Skills). This Skill serves as a quick-reference entrypoint; complex operational workflows require the dedicated Skill.
 
@@ -96,6 +96,7 @@ User wants to...
 │   └── Version management → SDK: api.get_model_branches_and_tags()
 │
 ├─── Studio ──────────────────────────────
+│   ├── List Studios → GET /studios (search/status/owner/mcp_support/hardware_type/sort)
 │   ├── Create Studio → POST /studios or CLI: ms create owner/repo --repo-type studio
 │   ├── Deploy/restart → CLI: ms deploy owner/repo --repo-type studio
 │   ├── View status → GET /studios/{owner}/{repo}
@@ -170,10 +171,11 @@ ms clear-cache                             # Clear cache
 | Studio | Paid resources need explicit user authorization | `paid/<InstanceType>` hardware charges the bound Alibaba Cloud account; see references/studio-operations.md |
 | Studio | Port fixed at 7860 | 8080 cannot be used |
 | Studio | No programmatic deletion | OpenAPI `DELETE /studios/{id}` returns 404; SDK/CLI `delete_repo` is deprecated and does not support studio. Deletion requires the web console; programmatically you can only `stop` |
-| MCP | Deployment `transport_type` required | Valid `sse`/`streamable_http`, otherwise HTTP 400 |
+| MCP | Deployment `transport_type` required | Valid `sse`/`streamable_http` (or high-spec `SSE`/`STREAMABLE_HTTP`), otherwise HTTP 400 |
 | MCP | Pagination limit ≤ 100 | `page × size > 100` returns HTTP 403 |
 | MCP | SDK has no deploy/undeploy | Use the CLI `ms mcp deploy/undeploy` or OpenAPI |
 | Skills | CLI supports only `add` | No `list`/`update`/`remove` subcommands yet |
+| Skills | Pagination limits | `page_size` 1–100; total result quota 2400 skills (HTTP quota error beyond) |
 
 ## Helper Scripts
 
