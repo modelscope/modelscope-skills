@@ -9,7 +9,7 @@
 | `MemoryError` / `OOMKilled` | Out of memory | Optimize memory usage or upgrade hardware; if switching to a paid resource, first clearly state the cost risk and obtain explicit authorization from the user |
 | `Permission denied` | File permission issue | `chmod +x` or check directory permissions |
 | `FileNotFoundError` | Wrong file path | Check whether the file has been committed to Git |
-| Variable is empty/None | Plaintext variable or secret not configured | Add it via OpenAPI; use secrets for sensitive information |
+| Variable is empty/None | Secret or public variable not configured | Add it via OpenAPI as a **secret** (`POST .../secrets`); use a public variable (`POST .../variables`) only for clearly non-sensitive configuration — its value can be read back by others |
 | `ImportError: cannot import name` | Version incompatibility | Pin the version in requirements.txt |
 
 ## Docker-specific errors
@@ -55,7 +55,7 @@ Deployment failed
 │   ├── Missing dependency → update requirements.txt
 │   ├── Wrong port → ensure 7860
 │   ├── Code error → fix the code
-│   └── Variable → check plaintext variable/secret configuration
+│   └── Variable → check secret / public variable configuration (credentials go in secrets)
 │
 └── After fixing, redeploy
     git add . && git commit -m "fix" && git push modelscope master

@@ -108,7 +108,14 @@ import os
 api_key = os.environ.get("API_KEY")
 ```
 
-Compile a list of variables for use in Step 6: put non-sensitive configuration in plaintext variables, and sensitive information such as API keys, tokens, and passwords in secrets.
+Reading a value from an environment variable does **not** decide where it is stored on the platform: secrets and public variables are both delivered to the app as environment variables, so the code above works with either.
+
+Compile the list of environment variables for Step 6 and classify each one — **secret by default**:
+
+| Goes to | What |
+|---|---|
+| **Secrets** (`/secrets`) | Everything you just removed from the code, plus any API key, token, password, AK/SK, private key, cookie, webhook URL, or connection string with embedded credentials. Also anything you are unsure about |
+| Public variables (`/variables`) | Only clearly non-sensitive configuration (paths, log level, model name, feature flags). The value can be read back by anyone who can view the Studio — by every logged-in user when the Studio is public |
 
 ### Step 5: Sync code to the Studio ⚠️ The only non-API step
 
@@ -142,29 +149,13 @@ git add . && git commit -m "Deploy to ModelScope Studio"
 git push -u modelscope master
 ```
 
-### Step 6: Configure plaintext variables/secrets
+### Step 6: Configure environment variables (secrets by default)
 
-Configure based on the list from Step 4 (API-first). Plaintext variables return both key and value (plus an optional `description`) and are only for non-sensitive configuration:
+Configure based on the classified list from Step 4 (API-first). Both kinds are injected into the app as environment variables; they differ only in whether the value can be read back.
 
-```bash
-# List plaintext variables
-curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
-# Add (description is optional, max 512 chars)
-curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
-# Update (description: omit to keep, pass "" to clear)
-curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/mnt/workspace/tmp"}'
-# Delete
-curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR"}'
-```
+> ⚠️ **Default to `/secrets`.** Never send an API key, token, password, or any other credential to `/variables`: a public variable's value can be read by anyone who can view the Studio — by every logged-in ModelScope user when the Studio is public. Full rules: SKILL.md → "Environment Variables: Secrets by Default".
 
-Secrets do not return the value (the list returns key + optional `description`) and are used for sensitive information such as API keys, tokens, and passwords:
+**Secrets** — for every API key, token, password, and anything you are unsure about. The value is never returned (the list returns key + optional `description`):
 
 ```bash
 # List secrets (returns key and description only)
@@ -185,7 +176,36 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/secrets
 # Equivalent CLI (secrets only): ms secret {list,add,update,delete} ${owner}/${repo}
 ```
 
-> ⚠️ To delete a plaintext variable or a secret, use `DELETE .../variables` or `DELETE .../secrets` and pass `{"key":"..."}` in the **body**, not the `DELETE .../{key}` path form. Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
+**Public variables** — only for clearly non-sensitive configuration. Key, value, and the optional `description` are all returned by the list call:
+
+```bash
+# List public variables
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+# Add (description is optional, max 512 chars) — non-sensitive values only
+curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
+# Update (description: omit to keep, pass "" to clear)
+curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/mnt/workspace/tmp"}'
+# Delete
+curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"key": "GRADIO_TEMP_DIR"}'
+```
+
+**Verify before deploying** — list the public variables once more and read the result as "what other people can see":
+
+```bash
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/${owner}/${repo}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+```
+
+If any entry is a credential (by key name or by value), move it now: `DELETE` it from `/variables`, `POST` the same key to `/secrets`, and tell the user to rotate that credential.
+
+> ⚠️ To delete a public variable or a secret, use `DELETE .../variables` or `DELETE .../secrets` and pass `{"key":"..."}` in the **body**, not the `DELETE .../{key}` path form. Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
 
 ### Step 7: Deploy the Studio
 
@@ -223,7 +243,7 @@ Keep alternating between them until `Running` or an error is found.
 | `SyntaxError` | Fix the code syntax |
 | `MemoryError` | Suggest optimizing memory usage or upgrading the hardware configuration; if switching to a paid resource is needed, first obtain explicit authorization per Step 3 |
 | `Permission denied` | Check file permissions |
-| Empty variable | Check Step 6 |
+| Empty variable | Check Step 6; add what is missing as a **secret** unless it is clearly non-sensitive configuration |
 
 **Docker-specific errors:**
 
@@ -240,4 +260,4 @@ Repair flow: analyze logs → modify code → `git push` → `POST .../deploy` (
 
 Provide the Studio URL: `$MODELSCOPE_ENDPOINT/studios/${owner}/${repo}`
 
-> If the Studio is private, prompt the user: "Deployment succeeded and it is currently private. Would you like to make it public?" After confirmation, `PATCH .../settings` with `{"visibility": "public"}` (or `ms settings ${owner}/${repo} --repo-type studio private=false`).
+> If the Studio is private, prompt the user: "Deployment succeeded and it is currently private. Would you like to make it public?" After confirmation, **first run `GET .../variables` and make sure no credential is stored as a public variable** (once the Studio is public, every logged-in user can read those values; move any credential to `/secrets` first), then `PATCH .../settings` with `{"visibility": "public"}` (or `ms settings ${owner}/${repo} --repo-type studio private=false`).

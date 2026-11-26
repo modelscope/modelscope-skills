@@ -104,8 +104,8 @@ User wants to...
 │   ├── Stop → CLI: ms stop owner/repo --repo-type studio
 │   ├── Update settings → CLI: ms settings owner/repo key=value --repo-type studio
 │   ├── Available configs → GET /studios/hardware, /studios/sdk-versions, /studios/base-images
-│   ├── Plaintext variables → GET/POST/PUT/DELETE /studios/{owner}/{repo}/variables
-│   ├── Secrets → GET/POST/PUT/DELETE /studios/{owner}/{repo}/secrets (or ms secret ...)
+│   ├── Secrets (default for env vars; API keys/tokens/passwords) → GET/POST/PUT/DELETE /studios/{owner}/{repo}/secrets (or ms secret ...)
+│   ├── Public variables (non-sensitive config only; value readable by others) → GET/POST/PUT/DELETE /studios/{owner}/{repo}/variables
 │   └── Full deployment workflow → see ms-studio-deploy
 │
 ├─── MCP: service management ──────────────────────────────
