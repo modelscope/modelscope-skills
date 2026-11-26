@@ -216,36 +216,13 @@ Once the OAuth app is enabled, the runtime injects these variables into the stud
 
 There is no `MS_*`-prefixed form of these variables — read the exact names above, or the app will fail to pick up its OAuth credentials.
 
-## Plaintext variables (Variables)
+## Environment variables: Secrets and Public variables
 
-Plaintext variables return key, value, and an optional `description`; use them only for non-sensitive configuration. Use secrets for sensitive information.
-
-```bash
-# List (returns key, value, description)
-curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
-
-# Add (description optional, max 512 chars)
-curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
-
-# Update (description: omit to keep the original, pass "" to clear)
-curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR", "value": "/mnt/workspace/tmp"}'
-
-# Delete (put key in the body, not as a path parameter)
-curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
-  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
-  -d '{"key": "GRADIO_TEMP_DIR"}'
-```
-
-Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
+Both kinds are injected into the Studio runtime as environment variables and read the same way in code. They differ only in whether the value can be read back: a secret's value is never returned; a public variable's key and value are returned to anyone who can view the Studio (every logged-in ModelScope user when the Studio is public). **Use Secrets by default; use Public variables only for clearly non-sensitive configuration.**
 
 ## Secrets (Secrets)
 
-The secrets list returns keys and descriptions (not values) and is used for sensitive information such as API keys, tokens, and passwords.
+The secrets list returns keys and descriptions (not values). Use secrets for API keys, tokens, passwords, and any other sensitive value — and for anything you are unsure about.
 
 ```bash
 # List (returns key and description)
@@ -270,5 +247,34 @@ curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/secr
 
 Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
 
-> ⚠️ Deleting either plaintext variables or secrets uses `DELETE .../variables` or `DELETE .../secrets` + body `{"key": "..."}`.
+## Public variables (Variables)
+
+> ⚠️ **Never store credentials here.** The list call returns key, value, and the optional `description` to anyone who can view the Studio — to every logged-in ModelScope user when the Studio is public. API keys, tokens, and passwords belong in Secrets. Use public variables only for non-sensitive configuration.
+
+```bash
+# List (returns key, value, description)
+curl "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY"
+
+# Add (description optional, max 512 chars) — non-sensitive values only
+curl -X POST "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/tmp/gradio", "description": "Gradio temp dir"}'
+
+# Update (description: omit to keep the original, pass "" to clear)
+curl -X PUT "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"key": "GRADIO_TEMP_DIR", "value": "/mnt/workspace/tmp"}'
+
+# Delete (put key in the body, not as a path parameter)
+curl -X DELETE "$MODELSCOPE_ENDPOINT/openapi/v1/studios/{owner}/{repo_name}/variables" \
+  -H "Authorization: Bearer $MODELSCOPE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"key": "GRADIO_TEMP_DIR"}'
+```
+
+Limits: `key` ≤ 128 chars, `value` ≤ 4096 chars, `description` ≤ 512 chars.
+
+If a credential was saved as a public variable by mistake: `DELETE` it from `/variables`, `POST` the same key to `/secrets`, redeploy, and rotate the credential.
+
+> ⚠️ Deleting either public variables or secrets uses `DELETE .../variables` or `DELETE .../secrets` + body `{"key": "..."}`.
 > The path form `DELETE .../{key}` returns 404 and is a no-op.
